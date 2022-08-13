@@ -1,4 +1,3 @@
-from matplotlib.pyplot import hist
 import torch as T
 import torch.nn.functional as F
 import torch.nn as nn
@@ -73,6 +72,7 @@ class Recommender:
         """
         history = []
         predict_hist = 0
+        recs = []
         while predict_hist < num_recs:
             if len(sequence) > TRAIN_CONSTANTS.HISTORY - 1:
                 history.extend(sequence)
@@ -82,9 +82,10 @@ class Recommender:
             inp_tnsr[1:] = inp_seq
             pred = self.predict(inp_tnsr, mode="pre")
             sequence = [pred] + sequence
+            recs.append(pred)
             predict_hist += 1
 
-        return sequence, history
+        return sequence, history, list(set(recs))
 
     def recommendPost(self, sequence: List[int], num_recs: int = 5):
         """Predict item at end
@@ -98,6 +99,7 @@ class Recommender:
         """
         history = []
         predict_hist = 0
+        recs = []
         while predict_hist < num_recs:
             if len(sequence) > TRAIN_CONSTANTS.HISTORY - 1:
                 history.extend(sequence)
@@ -107,9 +109,10 @@ class Recommender:
             inp_tnsr[:inp_seq.size(0)] = inp_seq
             pred = self.predict(inp_tnsr)
             sequence.append(pred)
+            recs.append(pred)
             predict_hist += 1
 
-        return sequence, history
+        return sequence, history, list(set(recs))
 
     def recommendSequential(self, sequence: List[int], num_recs: int = 5):
         """Predicts both start and end items randomly
@@ -130,19 +133,19 @@ class Recommender:
         while predict_hist < num_recs:
             if bool(random.choice([0, 1])):
                 # print(f"RECOMMEND POST")
-                sequence, hist = self.recommendPost(sequence, 1)
+                sequence, hist, _ = self.recommendPost(sequence, 1)
                 # print(f"SEQUENCE: {sequence}")
                 if len(hist) > 0:
                     history.extend(hist)
             else:
                 # print(f"RECOMMEND PRE")
-                sequence, hist = self.recommendPre(sequence, 1)
+                sequence, hist, _ = self.recommendPre(sequence, 1)
                 # print(f"SEQUENCE: {sequence}")
                 if len(hist) > 0:
                     history.extend(hist)
             predict_hist += 1
 
-        return sequence, []
+        return sequence, [], []
 
     def cleanHistory(self, history: List[int]):
         """History might have multiple repetitions, we clean the history 
@@ -176,19 +179,19 @@ class Recommender:
         """
         if mode == "post":
 
-            seq, hist = self.recommendPost(sequence, num_recs)
+            seq, hist, rec = self.recommendPost(sequence, num_recs)
 
         elif mode == "pre":
 
-            seq, hist = self.recommendPre(sequence, num_recs)
+            seq, hist, rec = self.recommendPre(sequence, num_recs)
 
         else:
 
-            seq, hist = self.recommendSequential(sequence, num_recs)
+            seq, hist, rec = self.recommendSequential(sequence, num_recs)
 
         hist = self.cleanHistory(hist)
 
         if len(hist) > 0 and len(hist) > len(seq):
             return hist
 
-        return seq
+        return seq, hist, rec
