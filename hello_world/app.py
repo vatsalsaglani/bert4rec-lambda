@@ -1,20 +1,28 @@
+import sys
+
+sys.path.append("/mnt/efs/recmovdeps")
 import os
 import json
-from msilib import sequence
 import traceback
 from fastapi import FastAPI
 from pydantic import BaseModel
 from mangum import Mangum
 from typing import Union, List, Dict
+from constants import TRAIN_CONSTANTS
 
 from predict import Recommender
+
+print(f"""
+THINGS INSIDE EFS: {os.listdir("/mnt/efs")}
+{os.listdir("/mnt/efs/recmovdeps")}
+""")
 
 model_available = False
 if os.path.exists("/mnt/efs/bert4rec-state-dict.pth"):
     model_available = True
 
 if model_available:
-    rec_obj = Recommender()
+    rec_obj = Recommender(TRAIN_CONSTANTS.MODEL_PATH)
 
 app = FastAPI()
 
@@ -23,7 +31,6 @@ class RecommendRequestModel(BaseModel):
     id: Union[str, int, None] = None
     sequence: List[Union[str, int]]
     history: Union[int, None] = 10
-
 
 
 @app.get("/")
@@ -39,41 +46,36 @@ def api_recommend(payload: RecommendRequestModel):
             sequence = payload.sequence
             sequence = [int(s) for s in sequence]
             history = payload.history
-            seq, hist, rec = rec_obj.recommend(sequence=sequence, num_recs=history)
-            return dict(
-                ok = True,
-                recommendations = rec,
-                seq = seq,
-                hist = hist,
-                id = id,
-                message = dict(
-                    traceback = "",
-                    message = "success",
-                    info = ""
-                )
-            )
+            seq, hist, rec = rec_obj.recommend(sequence=sequence,
+                                               num_recs=history)
+            return dict(ok=True,
+                        recommendations=rec,
+                        seq=seq,
+                        hist=hist,
+                        id=id,
+                        message=dict(traceback="", message="success", info=""))
         except Exception as e:
             print(f'GOT EXCEPTION: {str(e)}')
             print(f'TRACEBACK: {traceback.format_exc()}')
-            return dict(
-                ok = False,
-                message = dict(
-                    traceback = f"""
+            return dict(ok=False,
+                        message=dict(traceback=f"""
                     TRACEBACK: {traceback.format_exc()}
                     ERROR: {str(e)}
                     """,
-                    message = "failure",
-                    info = "Error recommending"
-                )
-            )
+                                     message="failure",
+                                     info="Error recommending"))
     else:
-        return dict(ok = False, message = {"traceback": "", "message": "Model not available in efs", "info": f"Things in EFS: {os.listdir('/mnt/efs')}"})
+        return dict(ok=False,
+                    message={
+                        "traceback": "",
+                        "message": "Model not available in efs",
+                        "info": f"Things in EFS: {os.listdir('/mnt/efs')}"
+                    })
 
 
 lambda_handler = Mangum(app, lifespan="off")
 
 # import requests
-
 
 # def lambda_handler(event, context):
 #     """Sample pure Lambda function
