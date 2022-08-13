@@ -1,6 +1,1 @@
 requests
-git+https://github.com/vatsalsaglani/AttentionTransformerPackage.git
-torch
-numpy
-mangum
-fastapi
