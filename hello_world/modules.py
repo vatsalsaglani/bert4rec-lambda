@@ -1,3 +1,5 @@
+import sys
+sys.path.append("/mnt/efs/recmovdeps")
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
