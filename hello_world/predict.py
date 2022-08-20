@@ -194,6 +194,6 @@ class Recommender:
         hist = self.cleanHistory(hist)
 
         if len(hist) > 0 and len(hist) > len(seq):
-            return hist
+            return seq, hist, rec
 
         return seq, hist, rec
